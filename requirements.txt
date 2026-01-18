@@ -1,0 +1,11 @@
+langgraph
+langchain 
+langchain-openai 
+python-dotenv 
+requests 
+beautifulsoup4 
+pydantic
+tavily-python
+langchain_groq
+streamlit
+streamlit-option-menu
