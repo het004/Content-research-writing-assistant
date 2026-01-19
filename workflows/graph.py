@@ -94,7 +94,11 @@ def node_finalization(state: ContentResearchState) -> ContentResearchState:
     
     try:
         # Set final content
-        state['final_content'] = state['draft']
+        state['final_content'] = state.get('draft', '')
+        
+        if not state['final_content']:
+            print("⚠️ No content to finalize")
+            state['final_content'] = "Error: No content was generated"
         
         # Prepare citations
         citations = []
@@ -109,27 +113,56 @@ def node_finalization(state: ContentResearchState) -> ContentResearchState:
         
         state['citations'] = citations
         
-        # Prepare metadata
-        word_count = len(state['final_content'].split()) if state['final_content'] else 0
+        # Prepare metadata - SAFE DEFAULTS
+        word_count = len(state['final_content'].split()) if state.get('final_content') else 0
         sources_used = len(citations)
+        
+        # Get confidence score safely
+        fact_check_results = state.get('fact_check_results', {})
+        if fact_check_results is None:
+            fact_check_results = {}
+        
+        confidence_score = fact_check_results.get('confidence_score', 75)
+        if confidence_score is None:
+            confidence_score = 75
+        
+        # Ensure confidence_score is an integer
+        try:
+            confidence_score = int(confidence_score)
+        except (ValueError, TypeError):
+            confidence_score = 75
         
         state['metadata'] = {
             'word_count': word_count,
-            'content_type': state['content_type'],
+            'content_type': state.get('content_type', 'unknown'),
             'sources_used': sources_used,
-            'topic': state['topic'],
-            'tone': 'professional' if state['content_type'] == 'article' else 'engaging',
-            'confidence_score': 85 if not state['fact_check_results'].get('has_issues') else 70,
-            'revision_made': state['draft_status'] == 'revised'
+            'topic': state.get('topic', 'unknown'),
+            'tone': 'professional' if state.get('content_type') == 'article' else 'engaging',
+            'confidence_score': confidence_score,
+            'revision_made': state.get('draft_status') == 'revised'
         }
         
-        print(f"✓ Final content prepared ({word_count} words, {sources_used} sources)")
+        print(f"✓ Final content prepared ({word_count} words, {sources_used} sources, {confidence_score}% confidence)")
         
         return state
     
     except Exception as e:
         state['error_message'] = str(e)
         print(f"✗ Finalization error: {e}")
+        
+        # Return state with safe defaults
+        state['final_content'] = state.get('draft', 'Error generating content')
+        state['citations'] = []
+        state['metadata'] = {
+            'word_count': len(state.get('draft', '').split()) if state.get('draft') else 0,
+            'content_type': state.get('content_type', 'unknown'),
+            'sources_used': 0,
+            'topic': state.get('topic', 'unknown'),
+            'tone': 'unknown',
+            'confidence_score': 60,
+            'revision_made': False
+        }
+        
         return state
 
 

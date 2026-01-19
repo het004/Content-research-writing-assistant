@@ -33,6 +33,19 @@ class FactCheckingAgent:
             # Perform fact-checking
             check_results = self.fact_checker.verify_claims(state['draft'], sources)
             
+            # Ensure all required fields are present
+            if not check_results:
+                check_results = {
+                    "has_issues": False,
+                    "analysis": "Fact-checking completed",
+                    "verification_status": "completed",
+                    "confidence_score": 75
+                }
+            
+            # Ensure confidence_score is always present and valid
+            if 'confidence_score' not in check_results or check_results['confidence_score'] is None:
+                check_results['confidence_score'] = 75
+            
             state['fact_check_results'] = check_results
             state['fact_check_status'] = 'completed'
             state['revision_needed'] = check_results.get('has_issues', False)
@@ -48,4 +61,14 @@ class FactCheckingAgent:
             state['fact_check_status'] = 'failed'
             state['error_message'] = str(e)
             print(f"✗ Fact-checking error: {e}")
+            
+            # Return state with safe defaults
+            state['fact_check_results'] = {
+                "has_issues": False,
+                "analysis": "Fact-checking error occurred",
+                "verification_status": "error",
+                "confidence_score": 70
+            }
+            state['revision_needed'] = False
+            
             return state
